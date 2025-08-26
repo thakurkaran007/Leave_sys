@@ -2,8 +2,6 @@
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@repo/ui/src/components/form";
-import { ToggleGroup, ToggleGroupItem } from "@repo/ui/src/components/toggle-group";
-import { GraduationCap, BookOpen } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@repo/ui/src/components/input";
 import { useCallback, useState } from "react";
@@ -48,6 +46,7 @@ export const SignupForm = () => {
     resolver: zodResolver(SignUpSchema),
     defaultValues: {
       otp: "",
+      subject: "",
       name: "",
       email: "",
       password1: "",
@@ -178,6 +177,19 @@ const submit = async (values: z.infer<typeof SignUpSchema>) => {
                       <FormLabel className="font-semibold">Full Name</FormLabel>
                       <FormControl>
                         <Input {...field} placeholder="Your name" type="text" className="h-11 rounded-lg" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="subject"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-semibold">Subject</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Your subject" type="text" className="h-11 rounded-lg" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

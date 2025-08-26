@@ -11,7 +11,7 @@ const signup = async(values: z.infer<typeof SignUpSchema>) => {
         return { error: "Invalid input" };
     }
 
-    const { email, password1, password2, name } = validation.data;
+    const { email, password1, password2, name, subject } = validation.data;
     
     if (password1 !== password2) {
         return { error: "Passwords do not match" };
@@ -20,10 +20,12 @@ const signup = async(values: z.infer<typeof SignUpSchema>) => {
     const user = await db.user.create({
         data: {
             name,
+            subject,
             email,
             password: hashedPassword,
         }
     })
+    
     return { success: "Account Created Successfully!" };
 }
 
