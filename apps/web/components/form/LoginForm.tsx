@@ -7,7 +7,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@repo/ui/src/components/input";
 import { Button } from "@repo/ui/src/components/button";
 import { useEffect, useState, useTransition } from "react";
-import { login } from "@/actions/login";
+import { login } from "@/actions/authentications/login";
 import { CardWrapper } from "./CardWrapper";
 import { FormError, FormSuccess } from "./form-condition";
 import { useSearchParams } from "next/navigation";

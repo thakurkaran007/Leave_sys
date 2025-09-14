@@ -5,13 +5,13 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@repo/ui/src/components/input";
 import { useCallback, useState } from "react";
-import signup from "@/actions/signup";
+import signup from "@/actions/authentications/signup";
 import { SignUpSchema } from "@/schema";
 import { Button } from "@repo/ui/src/components/button";
 import { CardWrapper } from "./CardWrapper";
 import { FormError, FormSuccess } from "./form-condition";
-import { send } from "@/actions/send-otp";
-import { verifyOtp } from "@/actions/verify-otp";
+import { send } from "@/actions/authentications/send-otp";
+import { verifyOtp } from "@/actions/authentications/verify-otp";
 import { useRouter } from "next/navigation";
 import { UserRole } from "@prisma/client";
 

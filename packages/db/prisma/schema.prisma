@@ -49,7 +49,7 @@ model Lecture {
 model LeaveRequest {
   id                   String                           @id @default(cuid())
   requesterId          String
-  lectureId            String     w                      @unique
+  lectureId            String                           @unique
   approverId           String
   reason               String
   createdAt            DateTime                         @default(now()) 
@@ -62,7 +62,7 @@ model LeaveRequest {
 
 model ReplacementOffer {
   id                  String                            @id @default(cuid())
-  offererId           String 
+  offererId           String
   leaveRequestId      String
   createdAt           DateTime                          @default(now())
   status              Status                            @default(PENDING)

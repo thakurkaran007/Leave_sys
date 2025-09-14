@@ -4,7 +4,7 @@ import { BeatLoader } from "react-spinners";
 import { CardWrapper } from "./CardWrapper"
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { newVerification } from "@/actions/verification";
+import { newVerification } from "@/actions/authentications/verification";
 import { FormError, FormSuccess } from "./form-condition";
 
 export const VerificationForm = () => {
