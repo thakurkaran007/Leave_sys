@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,85 +9,129 @@ datasource db {
 }
 
 model User {
-  id                    String                           @id @default(cuid())
-  email                 String                           @unique
-  name                  String?             
-  emailVerified         DateTime?             
-  password              String              
-  image                 String?             
-  teacher_status        Status                          @default(PENDING)
-  role                  UserRole                        @default(TEACHER)
-  lectures              Lecture[]                       // for ADMIN and HOD this will remain empty.
-  signupRequests        SignupRequests[]                // for admin and hod    
-  leavesRequested       LeaveRequest[]                  @relation("RequestedLeaves")  // for ADMIN and HOD
-  leavesApproved        LeaveRequest[]                  @relation("ApprovedLeaves")   // for ADMIN and HOD
-  replacementOffers     ReplacementOffer[]              @relation("OffersMade")      
+  id                     String                @id @default(cuid())
+  email                  String                @unique
+  name                   String?
+  emailVerified          DateTime?
+  password               String
+  image                  String?
+  teacher_status         UserStatus            @default(PENDING)  // Better name
+  role                   UserRole              @default(TEACHER)
+  
+  lectures               Lecture[]
+  signupRequests         SignupRequest[]       // Fixed naming
+  leavesRequested        LeaveRequest[]        @relation("RequestedLeaves")
+  leavesApproved         LeaveRequest[]        @relation("ApprovedLeaves")
+  replacementOffered     ReplacementOffer[]    @relation("OffersMade")
+  replacementAccepted    ReplacementOffer[]    @relation("OffersAccepted")
+  
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
 }
 
-model SignupRequests {
-  id                    String                          @id @default(cuid())
-  name                  String?     
-  email                 String                          @unique
-  teacherId             String
-  teacher               User                            @relation(fields: [teacherId], references: [id])
+// Normalize subjects into separate model
+model Subject {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  code     String?   @unique
+  
+  lectures Lecture[]
 }
 
 model Lecture {
-  id                   String                           @id @default(cuid())
-  teacherId            String
-  subject              String
-  date                 DateTime
-  startTime            DateTime
-  endTime              DateTime
-  room                 String?
-  teacher              User                             @relation(fields: [teacherId], references: [id])
-  leaveRequest         LeaveRequest?
-
-  @@unique([teacherId, subject])
+  id         String    @id @default(cuid())
+  teacherId  String
+  subjectId  String    // Reference to Subject model
+  date       DateTime
+  startTime  DateTime
+  endTime    DateTime
+  room       String?   // Keep as string for simplicity
+  
+  teacher      User              @relation(fields: [teacherId], references: [id])
+  subject      Subject           @relation(fields: [subjectId], references: [id])
+  leaveRequest LeaveRequest?
+  
+  @@unique([teacherId, subjectId, date, startTime]) // Better unique constraint
 }
 
-
 model LeaveRequest {
-  id                   String                           @id @default(cuid())
-  requesterId          String
-  lectureId            String                           @unique
-  approverId           String
-  reason               String
-  createdAt            DateTime                         @default(now()) 
-  status               Status                           @default(PENDING) 
-  offers               ReplacementOffer[]
-  requester            User                             @relation("RequestedLeaves", references: [id], fields: [requesterId])
-  approver             User?                            @relation("ApprovedLeaves", references: [id], fields: [approverId])
-  lecture              Lecture                          @relation(fields: [lectureId], references: [id])
+  id          String      @id @default(cuid())
+  requesterId String
+  lectureId   String      @unique
+  approverId  String?
+  reason      String
+  status      LeaveStatus @default(PENDING)  // Specific enum
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  requester         User               @relation("RequestedLeaves", fields: [requesterId], references: [id])
+  approver          User?              @relation("ApprovedLeaves", fields: [approverId], references: [id])
+  lecture           Lecture            @relation(fields: [lectureId], references: [id])
+  replacementOffers ReplacementOffer[] // Link to replacement offers
 }
 
 model ReplacementOffer {
-  id                  String                            @id @default(cuid())
-  offererId           String
-  leaveRequestId      String
-  createdAt           DateTime                          @default(now())
-  status              Status                            @default(PENDING)
-  offerer             User                              @relation("OffersMade", fields: [offererId], references: [id])
-  leaveRequest        LeaveRequest                      @relation(fields: [leaveRequestId], references: [id])
+  id             String      @id @default(cuid())
+  leaveRequestId String      // Link to the leave request
+  offererId      String
+  accepterId     String?
+  status         OfferStatus @default(PENDING)
+  message        String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  
+  leaveRequest LeaveRequest @relation(fields: [leaveRequestId], references: [id])
+  offerer      User         @relation("OffersMade", fields: [offererId], references: [id])
+  accepter     User?        @relation("OffersAccepted", fields: [accepterId], references: [id])
+}
+
+model SignupRequest { // Fixed naming consistency
+  id        String        @id @default(cuid())
+  name      String?
+  email     String        @unique
+  teacherId String
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  
+  teacher User @relation(fields: [teacherId], references: [id])
 }
 
 model VerificationToken {
-  id                  String                            @id @default(cuid())
-  email               String
-  token               String                            @unique
-  expires             DateTime
-
+  id      String   @id @default(cuid())
+  email   String
+  token   String   @unique
+  expires DateTime
+  
   @@unique([email, token])
 }
 
+// Separate enums for different contexts
 enum UserRole {
   HOD
   ADMIN
   TEACHER
 }
 
-enum Status {
+enum UserStatus {  // Renamed from Status
   PENDING
-  SUCCESS
+  ACTIVE
+  INACTIVE
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED  // Changed from SUCCESS
+  DENIED
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
   DENIED
 }
