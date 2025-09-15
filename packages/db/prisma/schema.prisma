@@ -38,8 +38,18 @@ model Subject {
   lectures Lecture[]
 }
 
+model TimeSlot {
+  id        String    @id @default(cuid())
+  startTime DateTime  @unique
+  endTime   DateTime  @unique
+  label     String
+
+  lectures  Lecture[]
+}
+
 model Lecture {
   id         String    @id @default(cuid())
+  timeSlotId String
   teacherId  String
   subjectId  String    // Reference to Subject model
   date       DateTime
@@ -49,6 +59,7 @@ model Lecture {
   
   teacher      User              @relation(fields: [teacherId], references: [id])
   subject      Subject           @relation(fields: [subjectId], references: [id])
+  timeSlot     TimeSlot          @relation(fields: [timeSlotId], references: [id])
   leaveRequest LeaveRequest?
   
   @@unique([teacherId, subjectId, date, startTime]) // Better unique constraint

@@ -8,3 +8,15 @@ export const getLeaveReqsById = async (id: string) => {
     })
     return reqs;
 }
+
+export const getLecturesById = async (id: string) => {
+    const lectures = await db.lecture.findMany({
+        where: {
+            id: id
+        },
+        include: {
+            teacher: true
+
+        }
+    })
+}
