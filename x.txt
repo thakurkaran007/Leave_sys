@@ -1,0 +1,49 @@
+Estatebnb operates an online marketplace enabling clients to
+put their property on sale or rent visit the area’s agent page, fill
+in the details of their house, flat, or bungalow, and enter them
+on a card which is filed according to the area, price range and
+type of property. The related property listing is made public on
+the website. Potential buyers complete a similar kind of card
+filed by buyer name in data binder. Weekly, the agent matches
+the potential buyer's requirements with the available properties
+and sends buyers the details of selected properties. Area agents
+can also arrange meetings with sellers and buyers. When a sale
+is completed, the buyer confirms that the contracts have been
+exchanged, and the invoice is sent to the client. On receipt of
+the payment, the receipt is generated and sent to the client and
+the deal is archived. Invoices are monitored monthly and if
+accounts are not settled within two months, a reminder is sent
+to the client.
+
+Moments International is a prominent event management
+company that specializes in organizing corporate conferences,
+trade shows, and community events. It provides a centralized
+platform for managing and tracking event details, managing
+registrations and attendee information, generating attendee
+badges, and further necessary communications. It creates and
+manages event details, including dates, venues, agendas,
+speakers, and sponsors. An online registration and ticketing
+system is in place to streamline attendee registration, payment
+processing, and ticket issuance. Communication tools such as
+email notifications, SMS alerts, and in-app messaging facilitate
+real-time communication with clients, attendees, and eventw
+staff. It also coordinates with other resource providers and
+manages event resources, including venue booking, equipment
+inventory, and staff scheduling. Reporting dashboards to
+provide insights into event performance metrics, attendance
+trends, revenue generation, and attendee feedback are
+developed and integrated with external services such as
+payment gateways, CRM systems, and marketing platforms to
+enhance functionality and data exchange.
+
+
+The inventory clerk verifies of stock level. Through the audit by the Inventory Clerk actor, the
+warehouse becomes ready to receive any goods. If there is a lack of inventory in the warehouse, the
+Inventory Clerk requests an order and submitted to the Purchase Manager. After that, the Purchasing
+Manager decides to purchase the order according to the company’s policy and also the supply and
+demand in the market. After taking a purchase decision, the purchase Manager works on to place the
+purchase. order, at the same time he works on selecting the right supplier, according to information he
+had at the company, then sends the request to the supplier. The Supplier works on receiving the order,
+fulfilling it, placing the invoice Based on the order, and transporting it to the company. The inventory
+Clerk works on receiving goods and inspecting goods according to purchase order. If the goods match
+specifications then transfer it to the warehouse, if not reject the goods and return them to the supplier

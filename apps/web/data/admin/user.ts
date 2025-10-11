@@ -18,12 +18,9 @@ export const getSignInReqs = async () => {
 }
 
 export const getReplacementsReqs = async () => {
-    const reqs = await db.user.findFirst({
+    const reqs = await db.replacementOffer.findMany({
         where: {
-            role: 'ADMIN'
-        },
-        include: {
-            replacementOffers: true
+            status: 'PENDING'
         }
     })
     return reqs;
@@ -38,10 +35,10 @@ export const getLeaveReqs = async () => {
     return reqs;
 }
 
-export const getApprovedReqs = async () => {
+export const getApprovedLeaveReqs = async () => {
     const reqs = await db.leaveRequest.findMany({
         where: {
-            status: 'SUCCESS'
+            status: 'APPROVED'
         }
     });
     return reqs;

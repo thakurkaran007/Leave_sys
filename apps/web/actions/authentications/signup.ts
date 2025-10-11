@@ -20,7 +20,6 @@ const signup = async(values: z.infer<typeof SignUpSchema>) => {
     const user = await db.user.create({
         data: {
             name,
-            subject,
             email,
             password: hashedPassword,
         }

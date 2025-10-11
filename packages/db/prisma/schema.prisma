@@ -48,21 +48,19 @@ model TimeSlot {
 }
 
 model Lecture {
-  id         String    @id @default(cuid())
-  timeSlotId String
-  teacherId  String
-  subjectId  String    // Reference to Subject model
-  date       DateTime
-  startTime  DateTime
-  endTime    DateTime
-  room       String?   // Keep as string for simplicity
-  
+  id           String    @id @default(cuid())
+  timeSlotId   String
+  teacherId    String
+  subjectId    String    // Reference to Subject model
+  date         DateTime
+  room         String?   // Keep as string for simplicity
+  weekDay      Int
   teacher      User              @relation(fields: [teacherId], references: [id])
   subject      Subject           @relation(fields: [subjectId], references: [id])
   timeSlot     TimeSlot          @relation(fields: [timeSlotId], references: [id])
   leaveRequest LeaveRequest?
   
-  @@unique([teacherId, subjectId, date, startTime]) // Better unique constraint
+  @@unique([teacherId, subjectId, date, timeSlotId]) // Better unique constraint
 }
 
 model LeaveRequest {

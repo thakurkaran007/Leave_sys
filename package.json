@@ -9,6 +9,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
+    "@types/date-fns": "^2.5.3",
     "prettier": "^3.4.2",
     "turbo": "^2.3.4",
     "typescript": "5.7.3"
@@ -22,6 +23,8 @@
     "packages/*"
   ],
   "dependencies": {
-    "@prisma/client": "^6.16.1"
+    "@prisma/client": "^6.16.1",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.545.0"
   }
 }

@@ -16,7 +16,6 @@ export const getLecturesById = async (id: string) => {
         },
         include: {
             teacher: true
-
         }
     })
 }

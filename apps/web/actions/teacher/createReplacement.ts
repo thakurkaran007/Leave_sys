@@ -1,7 +1,7 @@
 "use server";
 
 
-const createReplacementOffer = async (reqId: string, ) => {
+const createReplacementOffer = async (reqId: string) => {
 
 }
 
