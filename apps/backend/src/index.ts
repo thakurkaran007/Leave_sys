@@ -1,27 +1,77 @@
-import express from 'express';
-import cors from 'cors';
-import cookieParser from 'cookie-parser';
-import userRouter from './routers/user.js';
-import adminRouter from './routers/admin.js';
-import hodRouter from './routers/hod.js';
-import teacherRouter from './routers/teacher.js';
+// server.ts
+import { WebSocketServer } from "ws";
+import jwt, { JwtPayload } from "jsonwebtoken";
+import { UserRole } from "@prisma/client";
+import type { IncomingMessage } from "http";
+import { userInstance } from "./manager/UserManger.js"; // keep your filename consistent
 
-const app = express();
+interface MyJwtPayload extends JwtPayload {
+  id?: string;
+  role?: UserRole;
+}
 
-app.use(express.json());
-app.use(cookieParser());
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error("JWT_SECRET is required");
 
-app.use(cors({
-    origin: [process.env.FRONTEND_URL || 'http://localhost:3000']
-}));
+const wss = new WebSocketServer({ port: 8080 });
 
-const PORT = process.env.PORT || 3000;
+wss.on("connection", (ws, req: IncomingMessage | undefined) => {
+  const rawUrl = req?.url ?? "";
+  const params = new URLSearchParams(rawUrl.split("?")[1] || "");
+  const token = params.get("token");
+  if (!token) {
+    ws.close(1008, "No token provided");
+    return;
+  }
 
-app.use('/api/user', userRouter);
-app.use('/api/teacher', teacherRouter);
-app.use('/api/admin', adminRouter);
-app.use('/api/hod', hodRouter);
+  let payload: MyJwtPayload;
+  try {
+    const verified = jwt.verify(token, JWT_SECRET);
+    if (typeof verified === "string") throw new Error("Invalid token payload");
+    payload = verified as MyJwtPayload;
+  } catch {
+    ws.close(4002, "Invalid token");
+    return;
+  }
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  const userId = payload.id;
+  const role = (payload.role ?? "TEACHER") as UserRole;
+
+  if (!userId) {
+    ws.close(4003, "Token missing user id");
+    return;
+  }
+
+  const validRoles = new Set(Object.values(UserRole));
+  if (!validRoles.has(role)) {
+    ws.close(4004, "Invalid role");
+    return;
+  }
+
+  userInstance.addUser(userId, ws, role);
+  console.log(`User connected: ${userId} (${role})`);
+
+  ws.on("message", (raw) => {
+    let msg: any;
+    try {
+      msg = JSON.parse(raw.toString());
+    } catch {
+      ws.send(JSON.stringify({ error: "invalid_json" }));
+      return;
+    }
+
+    switch (msg.type) {
+      case "requestLeave":
+        if (role !== "TEACHER") {
+          ws.send(JSON.stringify({ error: "Only teachers can request leave" }));
+          return;
+        }
+        userInstance.requestLeave(userId, msg.reason, msg.lectureId);
+        break;
+    }
+  });
+
+  ws.on("close", () => {
+    userInstance.removeUser(userId);
+  });
 });

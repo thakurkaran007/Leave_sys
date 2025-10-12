@@ -33,7 +33,7 @@ const WeeklyTimetable = ({ sampleLectures }: WeeklyTimetableProps) => {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-[1400px] mx-auto">
-        <div className="mb-6">
+        <div className="mb-6 text-center">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">Weekly Lecture Timetable</h1>
           <p className="text-gray-600 text-sm">View and manage your weekly class schedule</p>
         </div>
