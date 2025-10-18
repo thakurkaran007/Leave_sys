@@ -10,6 +10,7 @@ interface LectureCardProps {
 }
 
 const LectureCard: FC<LectureCardProps> = ({ lecture }) => {
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleOnClick = () => {

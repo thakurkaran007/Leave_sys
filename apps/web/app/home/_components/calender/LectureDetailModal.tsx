@@ -1,8 +1,9 @@
 "use client";
-import React from 'react';
+import React, { useState } from 'react';
 import type { FC } from 'react';
 import { X, Calendar, Clock, MapPin, BookOpen, User, UserPlus, FileText } from 'lucide-react';
 import { LectureWithRelations } from '../../types';
+import getTeachers from '@/actions/teacher/getTeachers';
 
 interface LectureDetailModalProps {
   lecture: LectureWithRelations;
@@ -11,6 +12,10 @@ interface LectureDetailModalProps {
 }
 
 const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onClose }) => {
+  const [teachers, setTeachers] = useState<LectureWithRelations['teacher'][]>([]);
+  const [isRequestingLeave, setIsRequestingLeave] = useState(false);
+  const [isOfferingReplacement, setIsOfferingReplacement] = useState(false);
+
   const formatDate = (date: Date): string => {
     return new Intl.DateTimeFormat('en-US', {
       weekday: 'long',
@@ -32,16 +37,19 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
     return `${displayHour}:${min.toString().padStart(2, '0')} ${period}`;
   };
 
-  const handleRequestLeave = () => {
-    console.log('Request leave for lecture:', lecture.id);
-    // TODO: Implement leave request logic
-    // Navigate to leave request form or open another modal
+  const handleRequestLeave = async () => {
+
+    setIsRequestingLeave(true);
   };
 
-  const handleOfferReplacement = () => {
-    console.log('Offer replacement for lecture:', lecture.id);
-    // TODO: Implement replacement offer logic
-    // Navigate to replacement form or open another modal
+  const handleOfferReplacement = async (date: Date) => {
+    try {
+      const teachers = await getTeachers(date);
+      setTeachers(teachers);
+      setIsOfferingReplacement(true);
+    } catch (error) { 
+      setIsOfferingReplacement(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -124,7 +132,7 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
           {/* Action Buttons */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
             <button
-              onClick={handleRequestLeave}
+              onClick={() => handleRequestLeave()}
               className="flex items-center justify-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg transition-colors shadow-md hover:shadow-lg"
             >
               <FileText className="w-5 h-5" />
@@ -132,7 +140,7 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
             </button>
 
             <button
-              onClick={handleOfferReplacement}
+              onClick={() => handleOfferReplacement(lecture.date)}
               className="flex items-center justify-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg transition-colors shadow-md hover:shadow-lg"
             >
               <UserPlus className="w-5 h-5" />
