@@ -56,6 +56,7 @@ CREATE TABLE "public"."Lecture" (
     "subjectId" TEXT NOT NULL,
     "date" TIMESTAMP(3) NOT NULL,
     "room" TEXT,
+    "weekDay" INTEGER NOT NULL,
 
     CONSTRAINT "Lecture_pkey" PRIMARY KEY ("id")
 );
@@ -126,7 +127,7 @@ CREATE UNIQUE INDEX "TimeSlot_startTime_key" ON "public"."TimeSlot"("startTime")
 CREATE UNIQUE INDEX "TimeSlot_endTime_key" ON "public"."TimeSlot"("endTime");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Lecture_teacherId_subjectId_date_key" ON "public"."Lecture"("teacherId", "subjectId", "date");
+CREATE UNIQUE INDEX "Lecture_teacherId_subjectId_date_timeSlotId_key" ON "public"."Lecture"("teacherId", "subjectId", "date", "timeSlotId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "LeaveRequest_lectureId_key" ON "public"."LeaveRequest"("lectureId");

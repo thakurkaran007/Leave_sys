@@ -51,16 +51,36 @@ model Lecture {
   id           String    @id @default(cuid())
   timeSlotId   String
   teacherId    String
-  subjectId    String    // Reference to Subject model
+  subjectId    String
   date         DateTime
-  room         String?   // Keep as string for simplicity
+  room         String?
   weekDay      Int
-  teacher      User              @relation(fields: [teacherId], references: [id])
-  subject      Subject           @relation(fields: [subjectId], references: [id])
-  timeSlot     TimeSlot          @relation(fields: [timeSlotId], references: [id])
-  leaveRequest LeaveRequest?
   
-  @@unique([teacherId, subjectId, date, timeSlotId]) // Better unique constraint
+  teacher          User              @relation(fields: [teacherId], references: [id])
+  subject          Subject           @relation(fields: [subjectId], references: [id])
+  timeSlot         TimeSlot          @relation(fields: [timeSlotId], references: [id])
+  leaveRequest     LeaveRequest?
+  replacementOffers ReplacementOffer[] // Changed from 'replacement' to 'replacementOffers'
+  
+  @@unique([teacherId, subjectId, date, timeSlotId])
+}
+
+model ReplacementOffer {
+  id             String      @id @default(cuid())
+  lectureId      String
+  offererId      String
+  accepterId     String
+  status         OfferStatus @default(PENDING)
+  message        String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  
+  lecture      Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  offerer      User    @relation("OffersMade", fields: [offererId], references: [id])
+  accepter     User    @relation("OffersAccepted", fields: [accepterId], references: [id])
+  
+  @@index([accepterId, status]) // Add index for faster queries
+  @@index([lectureId])
 }
 
 model LeaveRequest {
@@ -75,24 +95,9 @@ model LeaveRequest {
   
   requester         User               @relation("RequestedLeaves", fields: [requesterId], references: [id])
   approver          User?              @relation("ApprovedLeaves", fields: [approverId], references: [id])
-  lecture           Lecture            @relation(fields: [lectureId], references: [id])
-  replacementOffers ReplacementOffer[] // Link to replacement offers
+  lecture           Lecture           @relation(fields: [lectureId], references: [id])
 }
 
-model ReplacementOffer {
-  id             String      @id @default(cuid())
-  leaveRequestId String      // Link to the leave request
-  offererId      String
-  accepterId     String?
-  status         OfferStatus @default(PENDING)
-  message        String?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  
-  leaveRequest LeaveRequest @relation(fields: [leaveRequestId], references: [id])
-  offerer      User         @relation("OffersMade", fields: [offererId], references: [id])
-  accepter     User?        @relation("OffersAccepted", fields: [accepterId], references: [id])
-}
 
 model SignupRequest { // Fixed naming consistency
   id        String        @id @default(cuid())
