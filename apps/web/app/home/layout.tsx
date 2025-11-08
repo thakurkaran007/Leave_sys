@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import SidebarItem from "./_components/SidebarItem";
 import { signOut } from "next-auth/react";
@@ -12,6 +12,7 @@ export default function Layout({
   children: React.ReactNode;
 }): JSX.Element {
   const [isOpen, setIsOpen] = useState(true);
+
 
   return (
     <div className="flex min-h-screen">
@@ -35,8 +36,7 @@ export default function Layout({
       >
         <SidebarItem href="/home/dashboard" icon={<Home />} title="Home" />
         <SidebarItem href="/home/leaves" icon={<ArrowLeftRight />} title="Leaves" />
-        <SidebarItem href="/home/notification" icon={<Bell />} title="Notifications" />
-        <SidebarItem href="/home/p2p" icon={<Users />} title="Replacements" />
+        <SidebarItem href="/home/replacements" icon={<Users />} title="Replacements" />
         <Button onClick={() => signOut()} className="mt-4 w-full">
           Log Out
         </Button>

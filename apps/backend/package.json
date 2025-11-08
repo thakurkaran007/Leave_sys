@@ -9,7 +9,6 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "module",
   "dependencies": {
     "@repo/db": "*",
     "jsonwebtoken": "^9.0.2",

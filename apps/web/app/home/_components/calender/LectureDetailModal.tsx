@@ -5,6 +5,9 @@ import { X, Calendar, Clock, MapPin, BookOpen, User, UserPlus, FileText, ArrowLe
 import { LectureWithRelations } from '../../types';
 import getTeachers from '@/actions/teacher/availableTeachers';
 import { getUser } from '@/hooks/getUser';
+import createReplacementOffer from '@/actions/teacher/createReplacement';
+import { toast } from '@repo/ui/src/hooks/use-toast';
+import { createLeave } from '@/actions/teacher/leave';
 
 interface LectureDetailModalProps {
   lecture: LectureWithRelations;
@@ -45,8 +48,16 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
   };
 
   const handleRequestLeave = async () => {
-    // TODO: Implement leave request logic
-    console.log('Request leave for lecture:', lecture.id);
+    if (!user || !user.id) {
+      toast({title: 'Error', description: 'User not found', variant: 'destructive'});
+      return;
+    }
+    const res =  await createLeave(user.id, lecture.id, 'Personal reasons');
+    if (res) {
+      toast({title: 'Leave Requested', description: 'Your leave request has been submitted successfully.'});
+    } else {
+      toast({title: 'Error', description: 'Failed to submit leave request', variant: 'destructive'});
+    }
   };
 
   const handleOfferReplacement = async () => {
@@ -76,22 +87,16 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
     setIsSubmitting(true);
     try {
       // TODO: Call API to create replacement offers
-      const response = await fetch('/api/replacement-offers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lectureId: lecture.id,
-          teacherIds: selectedTeachers,
-          message: message,
-        }),
-      });
+      const ids = teachers.map(t => t.id);
+      const response = await createReplacementOffer(lecture.id, ids, message)
 
-      if (!response.ok) throw new Error('Failed to send offers');
-
-      setViewMode('success');
+      if (response.success) {
+        setViewMode('success');
+      }
     } catch (error) {
       console.error('Error sending offers:', error);
       // TODO: Show error toast
+
     } finally {
       setIsSubmitting(false);
     }

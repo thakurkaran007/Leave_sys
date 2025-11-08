@@ -1,12 +1,7 @@
 
 import { UserRole } from "@prisma/client";
-import { db } from "@repo/db/dist/index.js";
 import WebSocket from "ws";
 
-interface User {
-    id: string;
-    ws: WebSocket;
-}
 
 class UserManager {
     private users: Map<string, WebSocket>;
@@ -26,35 +21,40 @@ class UserManager {
         return UserManager.instance;
     }
 
-    public addUser(id: string, ws: WebSocket, role: UserRole): void {
+    emit(id: string, type: string, data: any) {
+        this.getUser(id)?.send(JSON.stringify({ type, data }));
+    }
+
+    sendToAdmin(type: string, data: any) {
+        if (this.adminId) {
+            this.emit(this.adminId, type, data);
+        }
+    }
+
+    sendToHod(type: string, data: any) {
+        if (this.hodId) {
+            this.emit(this.hodId, type, data);
+        }
+    }
+
+    public addUser(id: string, ws: WebSocket, role: UserRole = 'TEACHER'): void {
         this.users.set(id, ws);
         if (role === 'ADMIN') this.adminId = id;
         if (role === 'HOD') this.hodId = id;
     }
 
-    public removeUser(id: string): void {
-        this.users.delete(id);
+    public removeUser(ws: WebSocket): void {
+        this.users.forEach((value, key) => {
+            if (value === ws) {
+                this.users.delete(key);
+            }
+        });
     }
 
     public getUser(id: string): WebSocket | undefined {
         return this.users.get(id);
     }
 
-    public async requestLeave(id: string, reason: string, lectureId: string): Promise<void> {
-        const req = await db.leaveRequest.create({
-            data: {
-                requesterId: id,
-                reason: reason,
-                lectureId: lectureId 
-            },
-            include: {
-                requester: true,
-                lecture: true
-            }
-        })
-        const adminWs = this.adminId ? this.getUser(this.adminId) : null;
-        adminWs?.send(JSON.stringify({ type: 'newLeaveRequest', request: req }));
-    }
 }
 
 export const userInstance = UserManager.getInstance();
