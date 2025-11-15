@@ -17,13 +17,16 @@ model User {
   image                  String?
   teacher_status         UserStatus            @default(PENDING)  // Better name
   role                   UserRole              @default(TEACHER)
-  
+
   lectures               Lecture[]
   signupRequests         SignupRequest[]       // Fixed naming
   leavesRequested        LeaveRequest[]        @relation("RequestedLeaves")
-  leavesApproved         LeaveRequest[]        @relation("ApprovedLeaves")
+  leavesAssigned         LeaveRequest[]        @relation("AssignedLeaves")
   replacementOffered     ReplacementOffer[]    @relation("OffersMade")
   replacementAccepted    ReplacementOffer[]    @relation("OffersAccepted")
+  leavesApproved         LeaveRequest[]        @relation("ApprovedLeaves") //For Admin/HOD
+  replacementsApproved   ReplacementOffer[]    @relation("ApprovedReplacements") // For Admin/HOD
+  applications            ApplicationLeave[]   @relation("Applications")
   
   createdAt              DateTime              @default(now())
   updatedAt              DateTime              @updatedAt
@@ -70,44 +73,60 @@ model ReplacementOffer {
   lectureId      String
   offererId      String
   accepterId     String
+  approverId     String?
   status         OfferStatus @default(PENDING)
   message        String?
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
   
-  lecture      Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
-  offerer      User    @relation("OffersMade", fields: [offererId], references: [id])
-  accepter     User    @relation("OffersAccepted", fields: [accepterId], references: [id])
+  approver       User?   @relation("ApprovedReplacements", fields: [approverId], references: [id])
+  lecture        Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  offerer        User    @relation("OffersMade", fields: [offererId], references: [id])
+  accepter       User    @relation("OffersAccepted", fields: [accepterId], references: [id])
   
   @@index([accepterId, status]) // Add index for faster queries
   @@index([lectureId])
 }
 
 model LeaveRequest {
-  id          String      @id @default(cuid())
-  requesterId String
-  lectureId   String      @unique
-  approverId  String?
-  reason      String
-  status      LeaveStatus @default(PENDING)  // Specific enum
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                String      @id @default(cuid())
+  requesterId       String
+  lectureId         String      @unique
+  approverId        String?
+  reason            String
+  assignedToId      String?
+  status            LeaveStatus @default(PENDING)  // Specific enum
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
   
+  assignedTo        User?              @relation("AssignedLeaves", fields: [assignedToId], references: [id])
   requester         User               @relation("RequestedLeaves", fields: [requesterId], references: [id])
   approver          User?              @relation("ApprovedLeaves", fields: [approverId], references: [id])
   lecture           Lecture           @relation(fields: [lectureId], references: [id])
+  application       ApplicationLeave? @relation("LeaveRequestApplication")
 }
 
+model ApplicationLeave {
+  id              String      @id @default(cuid())
+  applicantId     String
+  leaveRequestId  String   @unique
+  s3ObjectKey     String
+
+  leaveRequest LeaveRequest @relation("LeaveRequestApplication", fields: [leaveRequestId], references: [id], onDelete: Cascade)
+  applicant   User       @relation("Applications", fields: [applicantId], references: [id])
+
+  @@index([leaveRequestId, s3ObjectKey])
+}
 
 model SignupRequest { // Fixed naming consistency
-  id        String        @id @default(cuid())
-  name      String?
-  email     String        @unique
-  teacherId String
-  status    RequestStatus @default(PENDING)
-  createdAt DateTime      @default(now())
+  id            String        @id @default(cuid())
+  name          String?
+  email         String        @unique
+  teacherId     String
+  status        RequestStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
   
-  teacher User @relation(fields: [teacherId], references: [id])
+  teacher       User @relation(fields: [teacherId], references: [id])
 }
 
 model VerificationToken {
