@@ -17,7 +17,7 @@ const getTeachers = async (date: Date, startTime: Date, endTime: Date) => {
         }
     });
 
-    const busyTeacherIds = busyTeachers.map(lecture => lecture.teacherId);
+    const busyTeacherIds = busyTeachers.map((lecture: any) => lecture.teacherId);
 
     const availableTeachers = await db.user.findMany({
         where: {

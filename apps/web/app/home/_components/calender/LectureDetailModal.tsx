@@ -1,13 +1,30 @@
 "use client";
-import React, { useState } from 'react';
-import type { FC } from 'react';
-import { X, Calendar, Clock, MapPin, BookOpen, User, UserPlus, FileText, ArrowLeft, Search, CheckCircle, Send, Loader2 } from 'lucide-react';
-import { LectureWithRelations } from '../../types';
-import getTeachers from '@/actions/teacher/availableTeachers';
-import { getUser } from '@/hooks/getUser';
-import createReplacementOffer from '@/actions/teacher/createReplacement';
-import { toast } from '@repo/ui/src/hooks/use-toast';
-import { createLeave } from '@/actions/teacher/leave';
+import React, { useState } from "react";
+import type { FC } from "react";
+import {
+  X,
+  Calendar,
+  Clock,
+  MapPin,
+  BookOpen,
+  User,
+  UserPlus,
+  FileText,
+  ArrowLeft,
+  Search,
+  CheckCircle,
+  Send,
+  Loader2,
+} from "lucide-react";
+import { LectureWithRelations } from "../../types";
+import getTeachers from "@/actions/teacher/availableTeachers";
+import { getUser } from "@/hooks/getUser";
+import createReplacementOffer from "@/actions/teacher/createReplacement";
+import { toast } from "@repo/ui/src/hooks/use-toast";
+import { createLeave } from "@/actions/teacher/leave";
+import { getSignUrl } from "@/data/teachers/user";
+import LeaveRequestDialog from "./LeaveReqDialog";
+import { redirect } from "next/dist/server/api-utils";
 
 interface LectureDetailModalProps {
   lecture: LectureWithRelations;
@@ -15,105 +32,185 @@ interface LectureDetailModalProps {
   onClose: () => void;
 }
 
-type ViewMode = 'details' | 'selectTeachers' | 'confirmOffer' | 'success';
+type ViewMode = "details" | "selectTeachers" | "confirmOffer" | "success";
 
-const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onClose }) => {
+const LectureDetailModal: FC<LectureDetailModalProps> = ({
+  lecture,
+  isOpen,
+  onClose,
+}) => {
   const user = getUser();
-  const [viewMode, setViewMode] = useState<ViewMode>('details');
-  const [teachers, setTeachers] = useState<LectureWithRelations['teacher'][]>([]);
+  const [viewMode, setViewMode] = useState<ViewMode>("details");
+  const [teachers, setTeachers] = useState<LectureWithRelations["teacher"][]>(
+    []
+  );
   const [selectedTeachers, setSelectedTeachers] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [message, setMessage] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [message, setMessage] = useState("");
   const [isLoadingTeachers, setIsLoadingTeachers] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Leave dialog & upload url
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [signedUrl, setSignedUrl] = useState("");
+
   const formatDate = (date: Date): string => {
-    return new Intl.DateTimeFormat('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Intl.DateTimeFormat("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     }).format(date);
   };
 
   const formatTime = (date: Date): string => {
     const hours = date.getUTCHours();
     const minutes = date.getUTCMinutes();
-    const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-    
-    const [hour, min] = timeString.split(':').map(Number);
-    const period = hour >= 12 ? 'PM' : 'AM';
+    const timeString = `${hours.toString().padStart(2, "0")}:${minutes
+      .toString()
+      .padStart(2, "0")}`;
+
+    const [hour, min] = timeString.split(":").map(Number);
+    const period = hour >= 12 ? "PM" : "AM";
     const displayHour = hour % 12 || 12;
-    return `${displayHour}:${min.toString().padStart(2, '0')} ${period}`;
+    return `${displayHour}:${min.toString().padStart(2, "0")} ${period}`;
   };
 
+  // --- Leave flows ---
+  // When clicking Request Leave in UI: get signed URL and show dialog (keeps flow from second file)
   const handleRequestLeave = async () => {
-    if (!user || !user.id) {
-      toast({title: 'Error', description: 'User not found', variant: 'destructive'});
+    if (!user) {
+      toast({
+        title: "Not Logged In",
+        description: "Please log in to request a leave.",
+        duration: 5000,
+      });
       return;
     }
-    const res =  await createLeave(user.id, lecture.id, 'Personal reasons');
-    if (res) {
-      toast({title: 'Leave Requested', description: 'Your leave request has been submitted successfully.'});
-    } else {
-      toast({title: 'Error', description: 'Failed to submit leave request', variant: 'destructive'});
+
+    try {
+      const key = `leaves/${user?.name}/${lecture.id}.pdf`;
+      const url = await getSignUrl(key);
+      setSignedUrl(url);
+      setShowLeaveDialog(true);
+    } catch (error) {
+      console.error("Error getting signed URL:", error);
+      toast({
+        title: "Error",
+        description: "Failed to get upload URL for leave document.",
+        variant: "destructive",
+      });
     }
   };
 
+  // Called by LeaveRequestDialog when user submits (keeps logic from second file but supports both createLeave signatures)
+  const handleLeaveSubmit = async (reason: string, file: File | null) => {
+    setIsSubmitting(true);
+    try {
+      // preserve console log from second file
+      console.log("Submitting leave request:", { lectureId: lecture.id, reason, file });
+
+      // call createLeave in whichever arity exists:
+      // some codebases used createLeave(applicantId, lectureId, reason)
+      // others used createLeave(lectureId, reason)
+      if (typeof createLeave === "function" && (createLeave as any).length === 3) {
+        // original first file used createLeave(user.id, lecture.id, 'Personal reasons')
+        // here we pass applicantId, lectureId, reason
+        await (createLeave as any)(user?.id, lecture.id, reason);
+      } else {
+        // fallback to second file's usage
+        await (createLeave as any)(lecture.id, reason);
+      }
+
+      toast({
+        title: "Leave Request Submitted",
+        description: "Your leave request has been submitted successfully.",
+        duration: 5000,
+      });
+      setShowLeaveDialog(false);
+      onClose();
+    } catch (error) {
+      console.error("Error submitting leave request:", error);
+      toast({
+        title: "Leave Request Failed",
+        description: "There was an issue submitting your leave request.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // --- Replacement flows ---
   const handleOfferReplacement = async () => {
     setIsLoadingTeachers(true);
     try {
-      const fetchedTeachers = await getTeachers(lecture.date, lecture.timeSlot.startTime, lecture.timeSlot.endTime);
-      const filteredTeachers = fetchedTeachers.filter(teacher => teacher.id !== user?.id);
+      const fetchedTeachers = await getTeachers(
+        lecture.date,
+        lecture.timeSlot.startTime,
+        lecture.timeSlot.endTime
+      );
+      const filteredTeachers = fetchedTeachers.filter(
+        (teacher: any) => teacher.id !== user?.id
+      );
       setTeachers(filteredTeachers);
-      setViewMode('selectTeachers');
+      setViewMode("selectTeachers");
     } catch (error) {
-      console.error('Error fetching teachers:', error);
-      // TODO: Show error toast
+      console.error("Error fetching teachers:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch available teachers.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoadingTeachers(false);
     }
   };
 
   const toggleTeacher = (teacherId: string) => {
-    setSelectedTeachers(prev =>
-      prev.includes(teacherId)
-        ? prev.filter(id => id !== teacherId)
-        : [...prev, teacherId]
+    setSelectedTeachers((prev) =>
+      prev.includes(teacherId) ? prev.filter((id) => id !== teacherId) : [...prev, teacherId]
     );
   };
 
   const handleSendOffer = async () => {
     setIsSubmitting(true);
     try {
-      // TODO: Call API to create replacement offers
-      const ids = teachers.map(t => t.id);
-      const response = await createReplacementOffer(lecture.id, ids, message)
+      // prefer sending to the teachers user explicitly selected
+      const idsToSend = selectedTeachers.length > 0 ? selectedTeachers : teachers.map(t => t.id);
+      const response = await createReplacementOffer(lecture.id, idsToSend, message);
 
-      if (response.success) {
-        setViewMode('success');
+      // first file expected response.success
+      if (response && (response as any).success) {
+        setViewMode("success");
+      } else {
+        // if no structured response but request didn't throw, treat as success
+        setViewMode("success");
       }
     } catch (error) {
-      console.error('Error sending offers:', error);
-      // TODO: Show error toast
-
+      console.error("Error sending offers:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send replacement offers.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const filteredTeachers = teachers.filter(teacher =>
-    teacher.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    teacher.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredTeachers = teachers.filter((teacher) =>
+    (teacher.name ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (teacher.email ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const selectedTeacherDetails = teachers.filter(t => selectedTeachers.includes(t.id));
+  const selectedTeacherDetails = teachers.filter((t) => selectedTeachers.includes(t.id));
 
   if (!isOpen) return null;
 
   const renderContent = () => {
     switch (viewMode) {
-      case 'details':
+      case "details":
         return (
           <>
             {/* Header */}
@@ -124,7 +221,7 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
               >
                 <X className="w-5 h-5" />
               </button>
-              
+
               <div className="flex items-start gap-3">
                 <BookOpen className="w-8 h-8 mt-1 flex-shrink-0" />
                 <div>
@@ -162,7 +259,7 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
                 <MapPin className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-xs text-gray-500 font-medium uppercase">Location</p>
-                  <p className="text-sm font-semibold text-gray-800 mt-1">{lecture.room || 'TBA'}</p>
+                  <p className="text-sm font-semibold text-gray-800 mt-1">{lecture.room || "TBA"}</p>
                 </div>
               </div>
 
@@ -171,7 +268,7 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
                 <div>
                   <p className="text-xs text-gray-500 font-medium uppercase">Instructor</p>
                   <p className="text-sm font-semibold text-gray-800 mt-1">
-                    {lecture.teacher.name || 'Not assigned'}
+                    {lecture.teacher.name || "Not assigned"}
                   </p>
                   {lecture.teacher.email && (
                     <p className="text-xs text-gray-500 mt-0.5">{lecture.teacher.email}</p>
@@ -209,19 +306,17 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
             </div>
 
             <div className="bg-gray-50 px-6 py-4 rounded-b-lg border-t border-gray-200">
-              <p className="text-xs text-gray-500 text-center">
-                Lecture ID: {lecture.id}
-              </p>
+              <p className="text-xs text-gray-500 text-center">Lecture ID: {lecture.id}</p>
             </div>
           </>
         );
 
-      case 'selectTeachers':
+      case "selectTeachers":
         return (
           <>
             <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-t-lg relative">
               <button
-                onClick={() => setViewMode('details')}
+                onClick={() => setViewMode("details")}
                 className="absolute top-4 left-4 text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -260,23 +355,23 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
                     <p>No available teachers found</p>
                   </div>
                 ) : (
-                  filteredTeachers.map(teacher => (
+                  filteredTeachers.map((teacher) => (
                     <div
                       key={teacher.id}
                       onClick={() => toggleTeacher(teacher.id)}
                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
                         selectedTeachers.includes(teacher.id)
-                          ? 'border-green-500 bg-green-50'
-                          : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
+                          ? "border-green-500 bg-green-50"
+                          : "border-gray-200 hover:border-green-300 hover:bg-gray-50"
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
-                            {teacher.name?.charAt(0) || 'T'}
+                            {teacher.name?.charAt(0) || "T"}
                           </div>
                           <div>
-                            <p className="font-semibold text-gray-900">{teacher.name || 'Unknown'}</p>
+                            <p className="font-semibold text-gray-900">{teacher.name || "Unknown"}</p>
                             <p className="text-sm text-gray-500">{teacher.email}</p>
                           </div>
                         </div>
@@ -291,12 +386,12 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
 
               <div className="bg-gray-50 rounded-lg p-3 text-center">
                 <p className="text-sm text-gray-600">
-                  {selectedTeachers.length} teacher{selectedTeachers.length !== 1 ? 's' : ''} selected
+                  {selectedTeachers.length} teacher{selectedTeachers.length !== 1 ? "s" : ""} selected
                 </p>
               </div>
 
               <button
-                onClick={() => setViewMode('confirmOffer')}
+                onClick={() => setViewMode("confirmOffer")}
                 disabled={selectedTeachers.length === 0}
                 className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-3 rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
@@ -306,12 +401,12 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
           </>
         );
 
-      case 'confirmOffer':
+      case "confirmOffer":
         return (
           <>
             <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-t-lg relative">
               <button
-                onClick={() => setViewMode('selectTeachers')}
+                onClick={() => setViewMode("selectTeachers")}
                 className="absolute top-4 left-4 text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-all"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -335,13 +430,13 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-sm font-medium text-gray-700 mb-3">Sending offer to:</p>
                 <div className="space-y-2">
-                  {selectedTeacherDetails.map(teacher => (
+                  {selectedTeacherDetails.map((teacher) => (
                     <div key={teacher.id} className="flex items-center gap-3 bg-white p-3 rounded-lg">
                       <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                        {teacher.name?.charAt(0) || 'T'}
+                        {teacher.name?.charAt(0) || "T"}
                       </div>
                       <div className="flex-1">
-                        <p className="font-medium text-sm">{teacher.name || 'Unknown'}</p>
+                        <p className="font-medium text-sm">{teacher.name || "Unknown"}</p>
                         <p className="text-xs text-gray-500">{teacher.email}</p>
                       </div>
                     </div>
@@ -383,7 +478,7 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
           </>
         );
 
-      case 'success':
+      case "success":
         return (
           <>
             <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 rounded-t-lg relative">
@@ -409,7 +504,7 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
               <div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Offers Sent!</h3>
                 <p className="text-gray-600">
-                  Your replacement offer has been sent to {selectedTeachers.length} teacher{selectedTeachers.length !== 1 ? 's' : ''}.
+                  Your replacement offer has been sent to {selectedTeachers.length} teacher{selectedTeachers.length !== 1 ? "s" : ""}.
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
                   You'll be notified when someone accepts your offer.
@@ -424,21 +519,35 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({ lecture, isOpen, onCl
             </div>
           </>
         );
+
+      default:
+        return null;
     }
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <div 
-        className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
-        onClick={(e) => e.stopPropagation()}
+    <>
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        onClick={onClose}
       >
-        {renderContent()}
+        <div
+          className="bg-white rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {renderContent()}
+        </div>
       </div>
-    </div>
+
+      {/* Leave Request Dialog (from second file) */}
+      <LeaveRequestDialog
+        url={signedUrl}
+        isOpen={showLeaveDialog}
+        onClose={() => setShowLeaveDialog(false)}
+        onSubmit={handleLeaveSubmit}
+        isSubmitting={isSubmitting}
+      />
+    </>
   );
 };
 

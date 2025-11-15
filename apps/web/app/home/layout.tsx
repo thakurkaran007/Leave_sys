@@ -10,12 +10,12 @@ export default function Layout({
   children,
 }: {
   children: React.ReactNode;
-}): JSX.Element {
+}):any {
   const [isOpen, setIsOpen] = useState(true);
 
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen ">
       {/* Toggle button */}
       <div className="fixed top-5 left-5 z-50">
         <Button
@@ -35,8 +35,8 @@ export default function Layout({
         } overflow-hidden`}
       >
         <SidebarItem href="/home/dashboard" icon={<Home />} title="Home" />
-        <SidebarItem href="/home/leaves" icon={<ArrowLeftRight />} title="Leaves" />
-        <SidebarItem href="/home/replacements" icon={<Users />} title="Replacements" />
+        <SidebarItem href="/home/leaves" icon={<Users />} title="Leaves" />
+        <SidebarItem href="/home/replacements" icon={<ArrowLeftRight />} title="Replacements" />
         <Button onClick={() => signOut()} className="mt-4 w-full">
           Log Out
         </Button>
