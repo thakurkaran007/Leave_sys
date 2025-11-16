@@ -94,7 +94,9 @@ export const ReplacementCard = ({ replacement }: { replacement: any }) => {
               <Calendar className="w-4 h-4" />
               <div>
                 <div className="font-medium">{weekDays[lecture.weekDay]}</div>
-                <div className="text-xs">{new Date(lecture.date).toLocaleDateString()}</div>
+              <div className="text-xs">
+                {new Date(lecture.date).toLocaleDateString("en-IN", { timeZone: "UTC" })}
+              </div>
               </div>
             </div>
             

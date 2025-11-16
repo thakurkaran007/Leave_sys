@@ -81,7 +81,7 @@ const LeaveCard = ({ leave }: any) => {
                 Requested {new Date(leave.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
               </CardDescription>
 
-              {(
+              {leave.application && (
                 <button
                   onClick={handleShowApplication}
                   className="text-indigo-600 underline text-xs mt-1 hover:text-indigo-800"

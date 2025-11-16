@@ -37,6 +37,7 @@ export default function Layout({
         <SidebarItem href="/home/dashboard" icon={<Home />} title="Home" />
         <SidebarItem href="/home/leaves" icon={<Users />} title="Leaves" />
         <SidebarItem href="/home/replacements" icon={<ArrowLeftRight />} title="Replacements" />
+        <SidebarItem href="/home/offers" icon={<ArrowLeftRight />} title="Offers" />
         <Button onClick={() => signOut()} className="mt-4 w-full">
           Log Out
         </Button>

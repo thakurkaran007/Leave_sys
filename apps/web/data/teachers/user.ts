@@ -32,6 +32,38 @@ export const getReplacementsById = async (id: string) => {
     const reqs = await db.replacementOffer.findMany({
         where: {
             offererId: id,
+        }, 
+        include: {
+            offerer: true,
+            accepter: true,
+            lecture: {
+                include: {
+                    subject: true,
+                    timeSlot: true,
+                    teacher: true,
+                }
+            }
+        }
+    })
+    return reqs;
+}
+
+export const getReplacementsOffered = async (id: string) => {
+    const reqs = await db.replacementOffer.findMany({
+        where: {
+            accepterId: id,
+        },
+        include: {
+            offerer: true,
+            lecture: {
+                include: {
+                    subject: true,
+                    timeSlot: true,
+                }
+            }
+        },
+        orderBy: {
+            createdAt: 'desc'
         }
     })
     return reqs;
