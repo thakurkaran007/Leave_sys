@@ -90,7 +90,7 @@ export const getSignUrl = async (key: string) => {
     return signedUrl;
 }
 
-export const getImage = async (key: string) => {
+export const getImageByKey = async (key: string) => {
     const command = new GetObjectCommand({
         Bucket: process.env.AWS_S3_BUCKET_NAME!,
         Key: key,

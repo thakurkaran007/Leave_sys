@@ -5,6 +5,8 @@
   "private": true,
   "exports": {
     "./avatar": "./src/components/avatar.tsx",
+    "./tabs": "./src/components/tabs.tsx",
+    "./separator": "./src/components/separator.tsx",
     "./textarea": "./src/components/textarea.tsx",
     "./dialog": "./src/components/dialog.tsx",
     "./badge": "./src/components/badge.tsx",

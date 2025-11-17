@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@repo/ui/avatar';
 import { CalendarDays, Clock, BookOpen, MapPin, User, CheckCircle2, Clock3, XCircle, AlertCircle } from 'lucide-react';
 import { useState } from 'react';
 import { getUser } from '@/hooks/getUser';
-import { getImage } from '@/data/teachers/user';
+import { getImageByKey } from '@/data/teachers/user';
 
 // Mock data based on your Prisma schema
 
@@ -16,9 +16,8 @@ const LeaveCard = ({ leave }: any) => {
 
   const handleShowApplication = async () => {
     try {
-      const url = await getImage(leave.application.s3ObjectKey);
+      const url = await getImageByKey(leave.application.s3ObjectKey);
       console.log("Fetched application URL:", url);
-      // setPreviewUrl(url);
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (err) {
       console.error("Failed loading application:", err);
