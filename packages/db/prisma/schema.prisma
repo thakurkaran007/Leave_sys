@@ -51,62 +51,70 @@ model TimeSlot {
 }
 
 model Lecture {
-  id           String    @id @default(cuid())
-  timeSlotId   String
-  teacherId    String
-  subjectId    String
-  date         DateTime
-  room         String?
-  weekDay      Int
+  id                     String    @id @default(cuid())
+  timeSlotId             String
+  teacherId              String
+  subjectId              String
+  date                   DateTime
+  room                   String?
+  weekDay                Int
   
-  teacher          User              @relation(fields: [teacherId], references: [id])
-  subject          Subject           @relation(fields: [subjectId], references: [id])
-  timeSlot         TimeSlot          @relation(fields: [timeSlotId], references: [id])
-  leaveRequest     LeaveRequest?
-  replacementOffers ReplacementOffer[] // Changed from 'replacement' to 'replacementOffers'
+  teacher                User              @relation(fields: [teacherId], references: [id])
+  subject                Subject           @relation(fields: [subjectId], references: [id])
+  timeSlot               TimeSlot          @relation(fields: [timeSlotId], references: [id])
+  leaveRequest           LeaveRequest?
+  replacementOffers      ReplacementOffer[] @relation("OriginalLecture")
+  replacementLectures    ReplacementOffer[] @relation("ReplacementLecture")
   
   @@unique([teacherId, subjectId, date, timeSlotId])
 }
 
 model ReplacementOffer {
-  id             String      @id @default(cuid())
-  lectureId      String
-  offererId      String
-  accepterId     String
-  approverId     String?
-  status         OfferStatus @default(PENDING)
-  message        String?
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  id                String      @id @default(cuid())
+  leaveId           String?
+  lectureId         String      // Original lecture (teacher requesting replacement)
+  replaceLectureId  String?     // Lecture the replacement teacher will teach instead
+  offererId         String      // Teacher offering replacement
+  accepterId        String      // Teacher accepting replacement
+  approverId        String?
+  message           String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  status            OfferStatus @default(PENDING)
+
+  // Relations
+  lecture           Lecture     @relation("OriginalLecture", fields: [lectureId], references: [id], onDelete: Cascade)
+  replaceLecture    Lecture?    @relation("ReplacementLecture", fields: [replaceLectureId], references: [id], onDelete: Cascade)
+  leave             LeaveRequest? @relation("replacements", fields: [leaveId], references: [id], onDelete: Cascade)
+  offerer           User        @relation("OffersMade", fields: [offererId], references: [id])
+  accepter          User        @relation("OffersAccepted", fields: [accepterId], references: [id])
+  approver          User?       @relation("ApprovedReplacements", fields: [approverId], references: [id])
   
-  approver       User?   @relation("ApprovedReplacements", fields: [approverId], references: [id])
-  lecture        Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
-  offerer        User    @relation("OffersMade", fields: [offererId], references: [id])
-  accepter       User    @relation("OffersAccepted", fields: [accepterId], references: [id])
-  
-  @@index([accepterId, status]) // Add index for faster queries
+  @@index([accepterId, status])
   @@index([lectureId])
+  @@index([replaceLectureId])
 }
 
 model LeaveRequest {
-  id                String      @id @default(cuid())
-  requesterId       String
-  lectureId         String      @unique
-  approverId        String?
-  reason            String
-  assignedToId      String?
-  status            LeaveStatus @default(PENDING)  // Specific enum
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
-  
-  assignedTo        User?              @relation("AssignedLeaves", fields: [assignedToId], references: [id])
-  requester         User               @relation("RequestedLeaves", fields: [requesterId], references: [id])
-  approver          User?              @relation("ApprovedLeaves", fields: [approverId], references: [id])
-  lecture           Lecture           @relation(fields: [lectureId], references: [id])
-  application       ApplicationLeave? @relation("LeaveRequestApplication")
+  id                    String      @id @default(cuid())
+  requesterId           String
+  lectureId             String      @unique
+  approverId            String?
+  reason                String
+  assignedToId          String?
+  status                LeaveStatus @default(PENDING)  // Specific enum
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  replacementOffers     ReplacementOffer[] @relation("replacements")
+  assignedTo            User?              @relation("AssignedLeaves", fields: [assignedToId], references: [id])
+  requester             User               @relation("RequestedLeaves", fields: [requesterId], references: [id])
+  approver              User?              @relation("ApprovedLeaves", fields: [approverId], references: [id])
+  lecture               Lecture           @relation(fields: [lectureId], references: [id])
+  application           ApplicationLeave? @relation("LeaveRequestApplication")
 }
 
-model ApplicationLeave {
+model ApplicationLeave {  
   id              String      @id @default(cuid())
   applicantId     String
   leaveRequestId  String   @unique

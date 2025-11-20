@@ -13,7 +13,7 @@ interface DayColumnProps {
   lectures: LectureWithRelations[];
 }
 
-interface EmptySlotProps {
+export interface EmptySlotProps {
   timeSlot: TimeSlotType;
 }
 

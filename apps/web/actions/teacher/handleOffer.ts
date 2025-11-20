@@ -11,14 +11,12 @@ export const acceptOffer = async (replacementId: string) => {
                 data: { status: "ACCEPTED" },
             });
             
-            // delete other offers for the same lecture
             await tx.replacementOffer.deleteMany({
                 where: {
                     id: { not: result.id },
                     lectureId: result.lectureId
                 }
             });
-            
         });
         return true;
     } catch (error) {

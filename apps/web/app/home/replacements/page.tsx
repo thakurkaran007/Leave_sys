@@ -7,11 +7,7 @@ import { BookOpen } from "lucide-react";
 const ReplacementPage = async () => {
     const session = await auth();
     const replacements = await getReplacementsById(session?.user.id!);
-    console.log("Replacements: \n", replacements);
-
-    if (!replacements) {  
-      return <>sd</> ;
-    }
+    
       return (
     <div className="container mx-auto p-6 max-w-6xl">
       <div className="mb-6">

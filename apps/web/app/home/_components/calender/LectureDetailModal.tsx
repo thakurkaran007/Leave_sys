@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { FC } from "react";
 import {
   X,
@@ -16,7 +16,7 @@ import {
   Send,
   Loader2,
 } from "lucide-react";
-import { LectureWithRelations } from "../../types";
+import { LectureWithRelations, TimeSlotType } from "../../types";
 import getTeachers from "@/actions/teacher/availableTeachers";
 import { getUser } from "@/hooks/getUser";
 import createReplacementOffer from "@/actions/teacher/createReplacement";
@@ -25,6 +25,8 @@ import { createLeave } from "@/actions/teacher/leave";
 import { getSignUrl } from "@/data/teachers/user";
 import LeaveRequestDialog from "./LeaveReqDialog";
 import { redirect } from "next/dist/server/api-utils";
+import { EmptySlotProps } from "./dayColumns";
+import { getEmptySlots } from "@/actions/teacher/emptySlots";
 
 interface LectureDetailModalProps {
   lecture: LectureWithRelations;
@@ -53,6 +55,37 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({
   // Leave dialog & upload url
   const [showLeaveDialog, setShowLeaveDialog] = useState(false);
   const [signedUrl, setSignedUrl] = useState("");
+
+  // --- Slot selection / replacement ---
+  const [emptySlots, setEmptySlots] = useState<TimeSlotType[]>([]);
+  const [replaceSlot, setReplaceSlot] = useState<TimeSlotType | null>(null);
+  const [isLoadingSlots, setIsLoadingSlots] = useState<boolean>(false);
+
+  useEffect(() => {
+    // fetch empty slots for this lecture's weekday
+    let mounted = true;
+    setIsLoadingSlots(true);
+    getEmptySlots(lecture.id)
+      .then((slots) => {
+        if (!mounted) return;
+        setEmptySlots(slots || []);
+      })
+      .catch((error) => {
+        console.error("Error fetching empty slots:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load available slots.",
+          variant: "destructive",
+        });
+      })
+      .finally(() => {
+        if (mounted) setIsLoadingSlots(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [lecture.id]);
 
   const formatDate = (date: Date): string => {
     return new Intl.DateTimeFormat("en-US", {
@@ -107,21 +140,10 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({
   const handleLeaveSubmit = async (reason: string, file: File | null) => {
     setIsSubmitting(true);
     try {
-      // preserve console log from second file
       console.log("Submitting leave request:", { lectureId: lecture.id, reason, file });
+      const res = await createLeave(lecture.id, reason);
 
-      // call createLeave in whichever arity exists:
-      // some codebases used createLeave(applicantId, lectureId, reason)
-      // others used createLeave(lectureId, reason)
-      if (typeof createLeave === "function" && (createLeave as any).length === 3) {
-        // original first file used createLeave(user.id, lecture.id, 'Personal reasons')
-        // here we pass applicantId, lectureId, reason
-        await (createLeave as any)(user?.id, lecture.id, reason);
-      } else {
-        // fallback to second file's usage
-        await (createLeave as any)(lecture.id, reason);
-      }
-
+      if (res.error) throw res.error;
       toast({
         title: "Leave Request Submitted",
         description: "Your leave request has been submitted successfully.",
@@ -133,7 +155,7 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({
       console.error("Error submitting leave request:", error);
       toast({
         title: "Leave Request Failed",
-        description: "There was an issue submitting your leave request.",
+        description: `There is an error: ${error}`,
         variant: "destructive",
       });
     } finally {
@@ -143,16 +165,28 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({
 
   // --- Replacement flows ---
   const handleOfferReplacement = async () => {
+    // require the user to pick a slot to offer (UI-level enforcement)
+    if (!replaceSlot) {
+      toast({
+        title: "Select a slot",
+        description: "Please select an available slot to offer replacement for.",
+      });
+      return;
+    }
+
+    setIsLoadingSlots(true);
     setIsLoadingTeachers(true);
     try {
       const fetchedTeachers = await getTeachers(
-        lecture.date,
+        lecture.weekDay,
         lecture.timeSlot.startTime,
-        lecture.timeSlot.endTime
+        lecture.timeSlot.endTime,
+        replaceSlot
       );
       const filteredTeachers = fetchedTeachers.filter(
         (teacher: any) => teacher.id !== user?.id
       );
+      console.log("Filtered teachers:", filteredTeachers);
       setTeachers(filteredTeachers);
       setViewMode("selectTeachers");
     } catch (error) {
@@ -164,6 +198,7 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({
       });
     } finally {
       setIsLoadingTeachers(false);
+      setIsLoadingSlots(false);
     }
   };
 
@@ -178,7 +213,7 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({
     try {
       // prefer sending to the teachers user explicitly selected
       const idsToSend = selectedTeachers.length > 0 ? selectedTeachers : teachers.map(t => t.id);
-      const response = await createReplacementOffer(lecture.id, idsToSend, message);
+      const response = await createReplacementOffer(lecture.id, idsToSend, message, replaceSlot!, lecture.weekDay);
 
       // first file expected response.success
       if (response && (response as any).success) {
@@ -191,7 +226,7 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({
       console.error("Error sending offers:", error);
       toast({
         title: "Error",
-        description: "Failed to send replacement offers.",
+        description: `Failed to send replacement offers. ${error}`,
         variant: "destructive",
       });
     } finally {
@@ -276,6 +311,37 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({
                 </div>
               </div>
 
+              {/* --- Empty slots UI --- */}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 font-medium uppercase mb-3">Available slots (this weekday)</p>
+
+                {isLoadingSlots ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <p className="text-sm text-gray-500">Loading slots...</p>
+                  </div>
+                ) : emptySlots.length === 0 ? (
+                  <div className="text-sm text-gray-500">No empty slots available for this weekday.</div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {emptySlots.map((slot) => {
+                      const isSelected = replaceSlot && replaceSlot.startTime === slot.startTime && replaceSlot.endTime === slot.endTime;
+                      return (
+                        <button
+                          key={`${slot.startTime}-${slot.endTime}`}
+                          onClick={() => setReplaceSlot(slot)}
+                          className={`px-3 py-1.5 rounded-md border transition-all text-sm focus:outline-none ${isSelected ? 'bg-green-50 border-green-500' : 'bg-white border-gray-200 hover:border-green-300'}`}
+                        >
+                          {slot.startTime} - {slot.endTime}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="text-xs text-gray-400 mt-3">Select a slot above to offer replacement for that time. You must pick one to continue.</p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
                 <button
                   onClick={handleRequestLeave}
@@ -287,7 +353,7 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({
 
                 <button
                   onClick={handleOfferReplacement}
-                  disabled={isLoadingTeachers}
+                  disabled={isLoadingTeachers || !replaceSlot}
                   className="flex items-center justify-center gap-2 px-6 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg transition-colors shadow-md hover:shadow-lg disabled:bg-green-300"
                 >
                   {isLoadingTeachers ? (
@@ -332,6 +398,9 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({
                 <div>
                   <h2 className="text-2xl font-bold">Select Teachers</h2>
                   <p className="text-green-100 text-sm">{teachers.length} available teachers</p>
+                  {replaceSlot && (
+                    <p className="text-green-100 text-sm mt-1">Selected slot: {replaceSlot.startTime} - {replaceSlot.endTime}</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -422,6 +491,9 @@ const LectureDetailModal: FC<LectureDetailModalProps> = ({
                 <div>
                   <h2 className="text-2xl font-bold">Review & Send</h2>
                   <p className="text-green-100 text-sm">Confirm your replacement offer</p>
+                  {replaceSlot && (
+                    <p className="text-green-100 text-sm mt-1">Selected slot: {replaceSlot.startTime} - {replaceSlot.endTime}</p>
+                  )}
                 </div>
               </div>
             </div>

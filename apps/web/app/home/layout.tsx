@@ -6,7 +6,6 @@ import { signOut } from "next-auth/react";
 import { Home, ArrowLeftRight, Bell, Users, Menu, X } from "lucide-react";
 import { Button } from "@repo/ui/src/components/button";
 import { auth } from "@/auth";
-import { ExtendedUser } from "@/next-auth";
 import { getUser } from "@/hooks/getUser";
 
 export default function Layout({
@@ -17,8 +16,7 @@ export default function Layout({
   const [isOpen, setIsOpen] = useState(true);
   const user = getUser();
 
-  return (
-    <div className="flex min-h-screen ">
+  return  (<div className="flex min-h-screen ">
       {/* Toggle button */}
       <div className="fixed top-5 left-5 z-50">
         <Button
@@ -50,7 +48,6 @@ export default function Layout({
               <>
                 <SidebarItem href="/home/manage" icon={<Users />} title="Manage Users" />
                 <SidebarItem href="/home/leavesReqs" icon={<Home /> } title="LeavesReqs" />
-                <SidebarItem href="/home/replacementsReqs" icon={<ArrowLeftRight />} title="ReplacementsReqs" />
                 <SidebarItem href="/home/signupReqs" icon={<ArrowLeftRight />} title="SignupReqs" />
               </>
             ) : (

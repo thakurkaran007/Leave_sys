@@ -17,6 +17,8 @@ const ReplacementOfferCard = ({ offer }: ReplacementOfferCardProps) => {
   const [status, setStatus] = useState(offer.status);
   const [loading, setLoading] = useState(false);
 
+  console.log("Offer in OfferCard:", offer);
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: any; label: string }> = {
       PENDING: { variant: "secondary", label: "Pending" },
@@ -37,12 +39,20 @@ const ReplacementOfferCard = ({ offer }: ReplacementOfferCardProps) => {
     });
   };
 
-  const formatTime = (date: Date) => {
-    return new Date(date).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+   const formatTime = (date: Date): string => {
+    const hours = date.getUTCHours();
+    const minutes = date.getUTCMinutes();
+    const timeString = `${hours.toString().padStart(2, "0")}:${minutes
+      .toString()
+      .padStart(2, "0")}`;
+
+    const [hour, min] = timeString.split(":").map(Number);
+    const period = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${min.toString().padStart(2, "0")} ${period}`;
   };
+
+
 
   const Accept = async () => {
     if (status !== "PENDING") return; // prevent double action

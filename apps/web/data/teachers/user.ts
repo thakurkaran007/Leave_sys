@@ -3,10 +3,10 @@ import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const s3Client = new S3Client({
-    region: process.env.AWS_REGION,
+    region: process.env.AWS_REGION!,
     credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID!!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!!,
     },
 });
 
@@ -16,6 +16,7 @@ export const getLeaveReqsById = async (id: string) => {
             requesterId: id,
         },
         include: {
+            approver: true,
             lecture: {
                 include: {
                     timeSlot: true,
@@ -32,6 +33,7 @@ export const getReplacementsById = async (id: string) => {
     const reqs = await db.replacementOffer.findMany({
         where: {
             offererId: id,
+            leaveId: null
         }, 
         include: {
             offerer: true,
@@ -82,7 +84,7 @@ export const getLecturesById = async (id: string) => {
 
 export const getSignUrl = async (key: string) => {
     const command = new PutObjectCommand({
-        Bucket: process.env.AWS_S3_BUCKET_NAME!,
+        Bucket: process.env.AWS_S3_BUCKET_NAME!!,
         Key: key,
         ContentType: 'application/pdf'
     })
@@ -92,9 +94,32 @@ export const getSignUrl = async (key: string) => {
 
 export const getImageByKey = async (key: string) => {
     const command = new GetObjectCommand({
-        Bucket: process.env.AWS_S3_BUCKET_NAME!,
+        Bucket: process.env.AWS_S3_BUCKET_NAME!!,
         Key: key,
     })
     const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
     return signedUrl;
+}
+
+export const feasibleReq = async (lectureId: string, requesterId: string) => {
+    const existingLeave = await db.leaveRequest.findUnique({
+        where: { lectureId }
+    });
+    if (existingLeave) {
+        return { error: "Leave already requested for this lecture" };
+    }
+
+    // Check 2: Lecture date is too close (e.g., less than 24 hours)
+    const lecture = await db.lecture.findUnique({
+        where: { id: lectureId }
+    });
+
+    if (!lecture) return { error: "Lecture not found" };
+
+    const hoursUntilLecture = (lecture.date.getTime() - Date.now()) / (1000 * 60 * 60);
+    if (hoursUntilLecture < 24) {
+        return { error: "Cannot request leave less than 24 hours before lecture" };
+    }
+
+    return { success: true };
 }
